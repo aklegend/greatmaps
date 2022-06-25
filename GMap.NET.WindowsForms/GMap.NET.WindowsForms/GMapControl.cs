@@ -678,7 +678,7 @@ namespace GMap.NET.WindowsForms
         /// <param name="route"></param>
         public void UpdateRouteLocalPosition(GMapRoute route)
         {
-          route.LocalPoints.Clear();
+          route.ClearLocalPoints();
           
           for (int i = 0; i < route.Points.Count; i++)
           {
@@ -690,7 +690,7 @@ namespace GMap.NET.WindowsForms
                     p.OffsetNegative(Core.renderOffset);
                 }
 #endif
-                route.LocalPoints.Add(p);
+                route.AddLocalPoint(p);
             }
 #if !PocketPC
             route.UpdateGraphicsPath();
@@ -719,6 +719,26 @@ namespace GMap.NET.WindowsForms
 #if !PocketPC
             polygon.UpdateGraphicsPath();
 #endif
+        }
+        
+        /// <summary>
+         /// Update the position of the line
+         /// </summary>
+         /// <param name="route">Line</param>
+         /// <param name="pointArr">Screen coordinate array</param>
+         public Point[] UpdateRouteToArray(GMapRoute route)
+        {
+            Point[] pointArr = new Point[route.Points.Count];
+
+            for (int i = 0; i < route.Points.Count; i++)
+            {
+                GPoint p = FromLatLngToLocal(route.Points[i]);
+                p.OffsetNegative(Core.renderOffset);   // Set the offset
+
+                pointArr[i] = new Point((int)p.X, (int)p.Y);
+            }
+
+            return pointArr;
         }
 
         /// <summary>
