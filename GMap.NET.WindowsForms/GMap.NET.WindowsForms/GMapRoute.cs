@@ -108,12 +108,11 @@ namespace GMap.NET.WindowsForms
         /// <returns></returns>
         internal bool IsInside(int x, int y)
         {
-            if (graphicsPath != null)
-            {
-                return graphicsPath.IsOutlineVisible(x, y, Stroke);
-            }
+            if (graphicsPath == null)
+                return false;
 
-            return false;
+            lock (lockObj)
+                return graphicsPath.IsOutlineVisible(x, y, Stroke);
         }
 
       GraphicsPath graphicsPath;
@@ -124,39 +123,44 @@ namespace GMap.NET.WindowsForms
             graphicsPath = new GraphicsPath();
          }
          else
-         {
-            graphicsPath.Reset();
-         }
-
-         {
-            for(int i = 0; i < LocalPoints.Count; i++)
             {
-               GPoint p2 = LocalPoints[i];
-
-               if(i == 0)
-               {
-                  graphicsPath.AddLine(p2.X, p2.Y, p2.X, p2.Y);
-               }
-               else
-               {
-                  System.Drawing.PointF p = graphicsPath.GetLastPoint();
-                  graphicsPath.AddLine(p.X, p.Y, p2.X, p2.Y);
-               }
+                lock (lockObj)
+                    graphicsPath.Reset();
             }
-         }
+
+         lock (lockObj)
+            {
+                int j = 0;
+                foreach (GPoint p2 in LocalPoints)
+                {
+                    if (j == 0)
+                    {
+                        graphicsPath.AddLine(p2.X, p2.Y, p2.X, p2.Y);
+                    }
+                    else
+                    {
+                        System.Drawing.PointF p = graphicsPath.GetLastPoint();
+                        graphicsPath.AddLine(p.X, p.Y, p2.X, p2.Y);
+                    }
+                    j++;
+                }
+            }
       }
 #endif
 
         public virtual void OnRender(Graphics g)
         {
 #if !PocketPC
-         if(IsVisible)
-         {
-            if(graphicsPath != null)
+         if (IsVisible)
             {
-               g.DrawPath(Stroke, graphicsPath);
+                lock (lockObj)
+                {
+                    if (graphicsPath != null)
+                    {
+                        g.DrawPath(Stroke, graphicsPath);
+                    }
+                }
             }
-         }
 #else
             if (IsVisible)
             {
@@ -288,6 +292,24 @@ namespace GMap.NET.WindowsForms
         }
 
         #endregion
+        
+        private object lockObj = new object();
+
+        public void ClearLocalPoints()
+        {
+            lock (lockObj)
+            {
+                LocalPoints.Clear();
+            }
+        }
+
+        public void AddLocalPoint(GPoint p)
+        {
+            lock (lockObj)
+            {
+                LocalPoints.Add(p);
+            }
+        }
     }
 
     public delegate void RouteClick(GMapRoute item, MouseEventArgs e);
