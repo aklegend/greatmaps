@@ -110,7 +110,10 @@ namespace GMap.NET.WindowsForms
       {
           if (graphicsPath != null)
           {
-              return graphicsPath.IsVisible(x, y);
+              lock (lockObj)
+                {
+                    return graphicsPath.IsVisible(x, y);
+                }
           }
 
           return false;
@@ -120,31 +123,33 @@ namespace GMap.NET.WindowsForms
       internal void UpdateGraphicsPath()
       {
           if (graphicsPath == null)
-          {
-              graphicsPath = new GraphicsPath();
-          }
-          else
-          {
-              graphicsPath.Reset();
-          }
+            {
+                graphicsPath = new GraphicsPath();
+            }
+            else
+            {
+                lock (lockObj)
+                    graphicsPath.Reset();
+            }
 
-          {
-              Point[] pnts = new Point[LocalPoints.Count];
-              for (int i = 0; i < LocalPoints.Count; i++)
-              {
-                  Point p2 = new Point((int)LocalPoints[i].X, (int)LocalPoints[i].Y);
-                  pnts[pnts.Length - 1 - i] = p2;
-              }
+            lock (lockObj)
+            {
+                Point[] pnts = new Point[LocalPoints.Count];
+                for (int i = 0; i < LocalPoints.Count; i++)
+                {
+                    Point p2 = new Point((int)LocalPoints[i].X, (int)LocalPoints[i].Y);
+                    pnts[pnts.Length - 1 - i] = p2;
+                }
 
-              if (pnts.Length > 2)
-              {
-                  graphicsPath.AddPolygon(pnts);
-              }
-              else if (pnts.Length == 2)
-              {
-                  graphicsPath.AddLines(pnts);
-              }
-          }
+                if (pnts.Length > 2)
+                {
+                    graphicsPath.AddPolygon(pnts);
+                }
+                else if (pnts.Length == 2)
+                {
+                    graphicsPath.AddLines(pnts);
+                }
+            }
       }
 #endif
 
@@ -152,17 +157,20 @@ namespace GMap.NET.WindowsForms
       public virtual void OnRender(Graphics g)
       {
 #if !PocketPC
-         if(IsVisible)
-         {
-             if (IsVisible)
-             {
-                 if (graphicsPath != null)
-                 {
-                     g.FillPath(Fill, graphicsPath);
-                     g.DrawPath(Stroke, graphicsPath);
-                 }
-             }            
-         }
+         if (IsVisible)
+            {
+                if (IsVisible)
+                {
+                    lock (lockObj)
+                    {
+                        if (graphicsPath != null)
+                        {
+                            g.FillPath(Fill, graphicsPath);
+                            g.DrawPath(Stroke, graphicsPath);
+                        }
+                    }
+                }
+            }
 #else
          {
             if(IsVisible)
@@ -344,6 +352,19 @@ namespace GMap.NET.WindowsForms
       }
 
       #endregion
+      
+      private object lockObj = new object();
+        public void AddLocalPoint(GPoint p)
+        {
+            lock (lockObj)
+                LocalPoints.Add(p);
+        }
+
+        public void ClearLocalPoint()
+        {
+            lock (lockObj)
+                LocalPoints.Clear();
+        }
    }
 
    public delegate void PolygonClick(GMapPolygon item, MouseEventArgs e);
